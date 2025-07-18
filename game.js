@@ -17,6 +17,8 @@ catImg.src = 'cat_sprite_flipped.png';
 let dog, bullets, obstacles, keys, score, gameOver;
 let gravity = 1.2;
 let frame = 0;
+let worldRecord = 0;
+let personalRecord = 0;
 
 function resetGame() {
   dog = {
@@ -168,18 +170,14 @@ function update() {
     });
   });
 
-  ctx.fillStyle = 'black';
-  ctx.font = '20px Arial';
-  ctx.fillText('Score: ' + Math.floor(score), canvas.width - 180, 30);
-  ctx.fillText('Lives: ' + dog.lives, 10, 30);
-
-  if (frame % 100 === 0) spawnObstacle();
+  updateHUD();  // Update the HUD with the records and score
 
   requestAnimationFrame(update);
 }
 
+// Funzione per salvare il punteggio nel database
 function saveScoreToDatabase(address, score) {
-  fetch('http://localhost:3000/api/save-score', {
+  fetch('https://dog-runner-1.onrender.com/api/save-score', {  // Backend su Render
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ address, score })
@@ -187,4 +185,36 @@ function saveScoreToDatabase(address, score) {
   .then(res => res.json())
   .then(data => console.log('✅ Score saved:', data))
   .catch(err => console.error('❌ Error saving score:', err));
+}
+
+// Funzione per recuperare i record dal database
+function fetchRecords() {
+  const url = `https://dog-runner-1.onrender.com/api/get-records?address=${userAddress}`;
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      worldRecord = data.worldRecord;
+      personalRecord = data.personalRecord;
+      updateHUD();  // Update the HUD after fetching records
+    })
+    .catch(err => {
+      console.error('❌ Error fetching records:', err);
+    });
+}
+
+// Funzione per aggiornare l'HUD (score, lives, world record, personal record)
+function updateHUD() {
+  const worldRecordText = `World Record: ${worldRecord}`;
+  const personalRecordText = `Your Record: ${personalRecord}`;
+  const scoreText = `Score: ${Math.floor(score)}`;
+  const livesText = `Lives: ${dog.lives}`;
+
+  ctx.fillStyle = 'black';
+  ctx.font = '20px Arial';
+
+  // Display the world record, personal record, and score in the top right
+  ctx.fillText(worldRecordText, canvas.width - 180, 30); // World Record
+  ctx.fillText(personalRecordText, canvas.width - 180, 60); // Personal Record
+  ctx.fillText(scoreText, canvas.width - 180, 90); // Score
+  ctx.fillText(livesText, 10, 30); // Lives, display at top left
 }

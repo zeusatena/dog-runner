@@ -43,3 +43,17 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('startButton').addEventListener('click', tryStartGame);
   document.getElementById('retryButton').addEventListener('click', tryStartGame);
 });
+
+// Aggiungi la funzione per recuperare i record dal backend su Render
+async function fetchRecords() {
+  const url = `https://dog-runner-1.onrender.com/api/get-records?address=${userAddress}`;  // URL del backend su Render
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    worldRecord = data.worldRecord;
+    personalRecord = data.personalRecord;
+    updateHUD();  // Update the HUD after fetching records
+  } catch (err) {
+    console.error('❌ Error fetching records:', err);
+  }
+}

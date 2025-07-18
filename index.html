@@ -39,10 +39,27 @@
       z-index: 20;
       display: none;
     }
+    #recordInfo {
+      position: absolute;
+      top: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 16px;
+      z-index: 20;
+      display: none;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div id="walletInfo"></div>
+
+  <!-- Display world and personal record -->
+  <div id="recordInfo">
+    <p id="worldRecord">World Record: 0</p>
+    <p id="personalRecord">Your Record: 0</p>
+  </div>
 
   <div id="startScreen">
     <h1>Dog Runner</h1>
