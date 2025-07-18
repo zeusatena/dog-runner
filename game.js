@@ -185,7 +185,7 @@ function update() {
 
   if (frame % 100 === 0) spawnObstacle();
 
-  requestAnimationFrame(update);
+  requestAnimationFrame(update); //per log
 }
 
 // Funzione per salvare il punteggio nel database
