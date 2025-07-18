@@ -39,9 +39,15 @@ function resetGame() {
   gameOver = false;
 }
 
-function startGame() {
+async function startGame() {
+  // Mostra la schermata iniziale e prepara tutto per il gioco
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('gameOverScreen').style.display = 'none';
+  
+  // Recupera i record dal backend
+  await fetchRecords();
+  
+  // Resetta il gioco e inizia
   resetGame();
   update();
 }
@@ -193,20 +199,18 @@ function saveScoreToDatabase(address, score) {
 }
 
 // Funzione per recuperare i record dal database
-function fetchRecords() {
+async function fetchRecords() {
   const url = `https://dog-runner-1.onrender.com/api/get-records?address=${userAddress}`;
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      worldRecord = data.worldRecord;
-      personalRecord = data.personalRecord;
-      updateHUD();  // Update the HUD after fetching records
-    })
-    .catch(err => {
-      console.error('❌ Error fetching records:', err);
-    });
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    worldRecord = data.worldRecord;
+    personalRecord = data.personalRecord;
+    updateHUD();  // Chiamata per aggiornare l'HUD con i nuovi record
+  } catch (err) {
+    console.error('❌ Error fetching records:', err);
+  }
 }
-
 // Funzione per aggiornare l'HUD (score, lives, world record, personal record)
 function updateHUD() {
   const worldRecordText = `World Record: ${worldRecord}`;
