@@ -170,7 +170,12 @@ function update() {
     });
   });
 
-  updateHUD();  // Update the HUD with the records and score
+  ctx.fillStyle = 'black';
+  ctx.font = '20px Arial';
+  ctx.fillText('Score: ' + Math.floor(score), canvas.width - 180, 30);
+  ctx.fillText('Lives: ' + dog.lives, 10, 30);
+
+  if (frame % 100 === 0) spawnObstacle();
 
   requestAnimationFrame(update);
 }
