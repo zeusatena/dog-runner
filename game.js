@@ -178,8 +178,8 @@ function update() {
 
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
-  ctx.fillText(worldRecordText, canvas.width - 180, 60); // World Record
-  ctx.fillText(personalRecordText, canvas.width - 180, 90); // Personal Record
+  ctx.fillText('World Record: ', canvas.width - 180, 60); // World Record
+  ctx.fillText('Personal Record: ', canvas.width - 180, 90); // Personal Record
   ctx.fillText('Score: ' + Math.floor(score), canvas.width - 180, 30);
   ctx.fillText('Lives: ' + dog.lives, 10, 30);
 
