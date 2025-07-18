@@ -89,6 +89,7 @@ function spawnObstacle() {
     image: type.img,
     kind: type.type
   });
+  console.log("Obstacle spawned:", obstacles);  // Log per vedere se l'ostacolo viene creato correttamente
 }
 
 function update() {
@@ -132,10 +133,11 @@ function update() {
   bullets = bullets.filter(b => b.x < canvas.width);
 
   obstacles.forEach(ob => {
+    console.log('Obstacle position:', ob.x);  // Log per verificare la posizione dell'ostacolo
     ctx.drawImage(ob.image, ob.x, ob.y, ob.width, ob.height);
-    ob.x -= ob.speed;
+    ob.x -= ob.speed;  // Sposta l'ostacolo verso sinistra
   });
-  obstacles = obstacles.filter(ob => ob.x + ob.width > 0);
+  obstacles = obstacles.filter(ob => ob.x + ob.width > 0);  // Rimuove gli ostacoli che escono dallo schermo
 
   obstacles.forEach((ob, i) => {
     if (
@@ -181,14 +183,14 @@ function update() {
   ctx.fillText('Score: ' + Math.floor(score), canvas.width - 180, 30);
   ctx.fillText('Lives: ' + dog.lives, 10, 30);
 
-  if (frame % 100 === 0) spawnObstacle();
+  if (frame % 100 === 0) spawnObstacle();  // Chiamata per spawnare un nuovo ostacolo ogni 100 frame
 
   requestAnimationFrame(update);
 }
 
 // Funzione per salvare il punteggio nel database
 function saveScoreToDatabase(address, score) {
-  fetch('https://dog-runner-1.onrender.com/api/save-score', {  // Backend su Render
+  fetch('https://dog-runner-1.onrender.com/api/save-score', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ address, score })
@@ -206,7 +208,7 @@ async function fetchRecords() {
     const data = await response.json();
     worldRecord = data.worldRecord;
     personalRecord = data.personalRecord;
-    updateHUD();  // Chiamata per aggiornare l'HUD con i nuovi record
+    updateHUD();  // Aggiorna l'HUD con i nuovi record
   } catch (err) {
     console.error('❌ Error fetching records:', err);
   }
