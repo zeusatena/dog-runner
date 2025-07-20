@@ -44,11 +44,10 @@ async function startGame() {
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('gameOverScreen').style.display = 'none';
   
-  // Recupera i record dal backend
-  await fetchRecords();
-  
   // Resetta il gioco e inizia
   resetGame();
+  // Recupera i record dal backend
+  await fetchRecords();
   update();
 }
 
