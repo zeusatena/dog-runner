@@ -190,7 +190,7 @@ function update() {
     });
   });
 
-  ctx.fillStyle = 'black';
+  ctx.fillStyle = 'white';
   ctx.font = '20px Arial';
   // Mostra i record e score/lives
   ctx.fillText(`World Record: ${worldRecord}`, canvas.width - 180, 60);
