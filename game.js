@@ -22,22 +22,17 @@ let frame = 0;
 let worldRecord = 0;
 let personalRecord = 0;
 
-async function fetchRecords() {
-  const address = getUserAddress();
-  if (!address) return;
-  try {
-    const response = await fetch(`https://dog-runner-1.onrender.com/api/get-records?address=${address}`);
-    const data = await response.json();
-    worldRecord = data.worldRecord;
-    personalRecord = data.personalRecord;
-    console.log('Fetched records:', worldRecord, personalRecord);
-  } catch (err) {
-    console.error('Error fetching records:', err);
-  }
-}
-
 function resetGame() {
-  dog = { x: 100, y: 0, width: 60, height: 60, vy: 0, jumpPower: -18, grounded: false, lives: 3 };
+  dog = {
+    x: 100,
+    y: 0,
+    width: 60,
+    height: 60,
+    vy: 0,
+    jumpPower: -18,
+    grounded: false,
+    lives: 3
+  };
   bullets = [];
   obstacles = [];
   keys = {};
@@ -45,6 +40,38 @@ function resetGame() {
   frame = 0;
   gameOver = false;
 }
+
+async function startGame() {
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('gameOverScreen').style.display = 'none';
+
+  // Recupera i record dal backend
+  await fetchRecords();
+
+  resetGame();
+  update();
+}
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space' && dog.grounded && !gameOver) {
+    dog.vy = dog.jumpPower;
+    dog.grounded = false;
+  }
+  if ((e.key === 'z' || e.key === 'Z') && !gameOver) {
+    bullets.push({
+      x: dog.x + dog.width,
+      y: dog.y + dog.height / 2,
+      width: 10,
+      height: 4,
+      speed: 10
+    });
+  }
+});
+
+document.addEventListener('keyup', e => {
+  keys[e.code] = false;
+});
 
 function spawnObstacle() {
   const types = [
@@ -64,8 +91,20 @@ function spawnObstacle() {
   });
 }
 
-document.addEventListener('keydown', e => { keys[e.code] = true; });
-document.addEventListener('keyup', e => { keys[e.code] = false; });
+// Integra fetch dei record prima di iniziare il loop
+async function fetchRecords() {
+  const address = getUserAddress();
+  if (!address) return;
+  try {
+    const response = await fetch(`https://dog-runner-1.onrender.com/api/get-records?address=${address}`);
+    const data = await response.json();
+    worldRecord = data.worldRecord;
+    personalRecord = data.personalRecord;
+    console.log('Fetched records:', worldRecord, personalRecord);
+  } catch (err) {
+    console.error('Error fetching records:', err);
+  }
+}
 
 function update() {
   if (gameOver) return;
@@ -101,13 +140,13 @@ function update() {
   }
 
   ctx.fillStyle = 'orange';
-  bullets.forEach((b, i) => {
+  bullets.forEach(b => {
     ctx.fillRect(b.x, b.y, b.width, b.height);
     b.x += b.speed;
   });
   bullets = bullets.filter(b => b.x < canvas.width);
 
-  obstacles.forEach((ob, i) => {
+  obstacles.forEach(ob => {
     ctx.drawImage(ob.image, ob.x, ob.y, ob.width, ob.height);
     ob.x -= ob.speed;
   });
@@ -121,20 +160,22 @@ function update() {
       dog.y + dog.height > ob.y
     ) {
       obstacles.splice(i, 1);
-      dog.lives--;
+      dog.lives -= 1;
       if (dog.lives <= 0) {
         gameOver = true;
         const final = Math.floor(score);
         document.getElementById('finalScore').textContent = final;
         document.getElementById('gameOverScreen').style.display = 'flex';
+
+        // Save score to backend with wallet address
         const address = getUserAddress();
         if (address) saveScoreToDatabase(address, final);
       }
     }
   });
 
-  bullets.forEach((b, bi) => {
-    obstacles.forEach((ob, oi) => {
+  bullets.forEach((b, j) => {
+    obstacles.forEach((ob, i) => {
       if (
         ob.kind === 'cat' &&
         b.x < ob.x + ob.width &&
@@ -142,8 +183,8 @@ function update() {
         b.y < ob.y + ob.height &&
         b.y + b.height > ob.y
       ) {
-        bullets.splice(bi, 1);
-        obstacles.splice(oi, 1);
+        bullets.splice(j, 1);
+        obstacles.splice(i, 1);
         score += 10;
       }
     });
@@ -151,14 +192,18 @@ function update() {
 
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
+  // Mostra i record e score/lives
   ctx.fillText(`World Record: ${worldRecord}`, canvas.width - 180, 60);
   ctx.fillText(`Personal Record: ${personalRecord}`, canvas.width - 180, 90);
   ctx.fillText(`Score: ${Math.floor(score)}`, canvas.width - 180, 30);
   ctx.fillText(`Lives: ${dog.lives}`, 10, 30);
 
+  if (frame % 100 === 0) spawnObstacle();
+
   requestAnimationFrame(update);
 }
 
+// Funzione per salvare il punteggio nel database
 function saveScoreToDatabase(address, score) {
   fetch('https://dog-runner-1.onrender.com/api/save-score', {
     method: 'POST',
@@ -170,14 +215,13 @@ function saveScoreToDatabase(address, score) {
     .catch(err => console.error('❌ Error saving score:', err));
 }
 
+// Inizio gioco: connessione wallet, fetch, reset, hide screens, run loop
 async function tryStartGame() {
   const connected = await checkWalletConnection();
   if (!connected) return;
   await fetchRecords();
   resetGame();
-  document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('gameOverScreen').style.display = 'none';
-  update();
+  startGame();
 }
 
 document.getElementById('startButton').addEventListener('click', tryStartGame);
