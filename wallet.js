@@ -2,17 +2,17 @@ let userAddress = null;
 
 async function checkWalletConnection() {
   if (typeof window.ethereum === 'undefined') {
-    alert('To play, you need to install MetaMask!');
+    alert('To play, please install MetaMask!');
     return false;
   }
 
   try {
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    const chainId = await ethereum.request({ method: 'eth_chainId' });
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
 
     if (parseInt(chainId, 16) !== 16507) {
       try {
-        await ethereum.request({
+        await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: '0x407b' }] // 16507 in hex
         });
@@ -25,35 +25,20 @@ async function checkWalletConnection() {
 
     userAddress = accounts[0];
     const walletDiv = document.getElementById('walletInfo');
-    walletDiv.textContent = `Wallet: ${userAddress}`;
-    walletDiv.style.display = 'block';
+    if (walletDiv) {
+      walletDiv.textContent = `Wallet: ${userAddress}`;
+      walletDiv.style.display = 'block';
+    }
+
     return true;
-  } catch (err) {
-    console.error('Wallet connection error:', err);
+  } catch {
+    alert('Unable to connect to wallet. Please try again.');
     return false;
   }
 }
 
-async function tryStartGame() {
-  const connected = await checkWalletConnection();
-  if (connected) startGame(); // defined in game.js
+function getUserAddress() {
+  return userAddress;
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('startButton').addEventListener('click', tryStartGame);
-  document.getElementById('retryButton').addEventListener('click', tryStartGame);
-});
-
-// Aggiungi la funzione per recuperare i record dal backend su Render
-async function fetchRecords() {
-  const url = `https://dog-runner-1.onrender.com/api/get-records?address=${userAddress}`;  // URL del backend su Render
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    worldRecord = data.worldRecord;
-    personalRecord = data.personalRecord;
-    updateHUD();  // Update the HUD after fetching records
-  } catch (err) {
-    console.error('❌ Error fetching records:', err);
-  }
-}
+export { checkWalletConnection, getUserAddress };

@@ -1,3 +1,5 @@
+import { checkWalletConnection, getUserAddress } from './wallet.js';
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
@@ -14,9 +16,9 @@ bikeImg.src = 'bike_sprite_flipped.png';
 const catImg = new Image();
 catImg.src = 'cat_sprite_flipped.png';
 
-let dog, bullets, obstacles, keys, score, gameOver;
-let gravity = 1.2;
-let frame = 0;
+// Game state
+let dog, bullets, obstacles, keys;
+let score, gameOver, frameCount;
 let worldRecord = 0;
 let personalRecord = 0;
 
@@ -35,76 +37,55 @@ function resetGame() {
   obstacles = [];
   keys = {};
   score = 0;
-  frame = 0;
+  frameCount = 0;
   gameOver = false;
 }
 
-async function startGame() {
-  // Mostra la schermata iniziale e prepara tutto per il gioco
-  document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('gameOverScreen').style.display = 'none';
-
-  // Recupera i record dal backend
-  await fetchRecords();
-  
-  // Resetta il gioco e inizia
-  resetGame();
-
-  update();
+async function fetchRecords() {
+  const address = getUserAddress();
+  if (!address) return;
+  try {
+    const res = await fetch(`https://dog-runner-1.onrender.com/api/get-records?address=${address}`);
+    const data = await res.json();
+    worldRecord = data.worldRecord;
+    personalRecord = data.personalRecord;
+    console.log('Records:', worldRecord, personalRecord);
+  } catch (err) {
+    console.error('Error fetching records:', err);
+  }
 }
-
-document.addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if (e.code === 'Space' && dog.grounded && !gameOver) {
-    dog.vy = dog.jumpPower;
-    dog.grounded = false;
-  }
-  if ((e.key === 'z' || e.key === 'Z') && !gameOver) {
-    bullets.push({
-      x: dog.x + dog.width,
-      y: dog.y + dog.height / 2,
-      width: 10,
-      height: 4,
-      speed: 10
-    });
-  }
-});
-
-document.addEventListener('keyup', e => {
-  keys[e.code] = false;
-});
 
 function spawnObstacle() {
   const types = [
-    { img: carImg, width: 90, height: 60, type: 'car' },
-    { img: bikeImg, width: 40, height: 40, type: 'bike' },
-    { img: catImg, width: 40, height: 40, type: 'cat' }
+    { img: carImg,  width:90, height:60 },
+    { img: bikeImg, width:40, height:40 },
+    { img: catImg,  width:40, height:40 }
   ];
-  const type = types[Math.floor(Math.random() * types.length)];
+  const type = types[Math.floor(Math.random()*types.length)];
   obstacles.push({
     x: canvas.width,
     y: canvas.height - type.height - 20,
     width: type.width,
     height: type.height,
     speed: 6,
-    image: type.img,
-    kind: type.type
+    image: type.img
   });
 }
 
 function update() {
   if (gameOver) return;
 
-  frame++;
+  frameCount++;
   score += 0.1;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(bgImg,0,0,canvas.width,canvas.height);
+
+  // Dog movement
   if (keys['ArrowRight']) dog.x += 5;
-  if (keys['ArrowLeft']) dog.x -= 5;
-  dog.x = Math.max(0, Math.min(canvas.width - dog.width, dog.x));
-
-  dog.vy += gravity;
+  if (keys['ArrowLeft'])  dog.x -= 5;
+  dog.x = Math.max(0, Math.min(canvas.width-dog.width, dog.x));
+  dog.vy += 1.2;
   dog.y += dog.vy;
   if (dog.y >= canvas.height - dog.height - 20) {
     dog.y = canvas.height - dog.height - 20;
@@ -112,121 +93,91 @@ function update() {
     dog.grounded = true;
   }
 
+  // Draw ground
   ctx.fillStyle = '#228B22';
-  ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+  ctx.fillRect(0, canvas.height-20, canvas.width, 20);
 
+  // Draw dog
   if (gameOver) {
     ctx.save();
-    ctx.translate(dog.x + dog.width / 2, dog.y + dog.height / 2);
+    ctx.translate(dog.x+dog.width/2, dog.y+dog.height/2);
     ctx.rotate(Math.PI);
-    ctx.drawImage(dogImg, -dog.width / 2, -dog.height / 2, dog.width, dog.height);
+    ctx.drawImage(dogImg, -dog.width/2, -dog.height/2, dog.width, dog.height);
     ctx.restore();
   } else {
     ctx.drawImage(dogImg, dog.x, dog.y, dog.width, dog.height);
   }
 
+  // Bullets
   ctx.fillStyle = 'orange';
-  bullets.forEach(b => {
-    ctx.fillRect(b.x, b.y, b.width, b.height);
-    b.x += b.speed;
-  });
+  bullets.forEach(b => { ctx.fillRect(b.x,b.y,b.width,b.height); b.x += b.speed; });
   bullets = bullets.filter(b => b.x < canvas.width);
 
-  obstacles.forEach(ob => {
-    ctx.drawImage(ob.image, ob.x, ob.y, ob.width, ob.height);
-    ob.x -= ob.speed;
+  // Obstacles
+  obstacles.forEach(o => {
+    ctx.drawImage(o.image, o.x, o.y, o.width, o.height);
+    o.x -= o.speed;
   });
-  obstacles = obstacles.filter(ob => ob.x + ob.width > 0);
+  obstacles = obstacles.filter(o => o.x + o.width > 0);
 
-  obstacles.forEach((ob, i) => {
-    if (
-      dog.x < ob.x + ob.width &&
-      dog.x + dog.width > ob.x &&
-      dog.y < ob.y + ob.height &&
-      dog.y + dog.height > ob.y
-    ) {
-      obstacles.splice(i, 1);
-      dog.lives -= 1;
+  // Collision: dog vs obstacles
+  obstacles.forEach((o,i) => {
+    if (dog.x < o.x+o.width && dog.x+dog.width > o.x && dog.y < o.y+o.height && dog.y+dog.height > o.y) {
+      obstacles.splice(i,1);
+      dog.lives--;
       if (dog.lives <= 0) {
         gameOver = true;
-        const final = Math.floor(score);
-        document.getElementById('finalScore').textContent = final;
+        const finalScore = Math.floor(score);
+        document.getElementById('finalScore').textContent = finalScore;
         document.getElementById('gameOverScreen').style.display = 'flex';
-
-        // Save score to backend with wallet address
-        if (typeof userAddress === 'string') {
-          saveScoreToDatabase(userAddress, final);
-        }
+        const address = getUserAddress();
+        if (address) saveScore(address, finalScore);
       }
     }
   });
 
-  bullets.forEach((b, j) => {
-    obstacles.forEach((ob, i) => {
-      if (
-        ob.kind === 'cat' &&
-        b.x < ob.x + ob.width &&
-        b.x + b.width > ob.x &&
-        b.y < ob.y + ob.height &&
-        b.y + b.height > ob.y
-      ) {
-        bullets.splice(j, 1);
-        obstacles.splice(i, 1);
+  // Bullet vs cat collisions
+  bullets.forEach((b,bi) => {
+    obstacles.forEach((o,oi) => {
+      if (o.image === catImg && b.x < o.x+o.width && b.x+b.width > o.x && b.y < o.y+o.height && b.y+b.height > o.y) {
+        bullets.splice(bi,1);
+        obstacles.splice(oi,1);
         score += 10;
       }
     });
   });
 
-  ctx.fillStyle = 'black';
+  // HUD
+  ctx.fillStyle = 'white';
   ctx.font = '20px Arial';
-  ctx.fillText('World Record: ', canvas.width - 180, 60); // World Record
-  ctx.fillText('Personal Record: ', canvas.width - 180, 90); // Personal Record
-  ctx.fillText('Score: ' + Math.floor(score), canvas.width - 180, 30);
-  ctx.fillText('Lives: ' + dog.lives, 10, 30);
+  ctx.fillText(`World Record: ${worldRecord}`,      canvas.width-180, 30);
+  ctx.fillText(`Personal Record: ${personalRecord}`, canvas.width-180, 60);
+  ctx.fillText(`Score: ${Math.floor(score)}`,        canvas.width-180, 90);
+  ctx.fillText(`Lives: ${dog.lives}`,               10, 30);
 
-  if (frame % 100 === 0) spawnObstacle();
-
-  requestAnimationFrame(update); //per log
+  requestAnimationFrame(update);
 }
 
-// Funzione per salvare il punteggio nel database
-function saveScoreToDatabase(address, score) {
+function saveScore(address, score) {
   fetch('https://dog-runner-1.onrender.com/api/save-score', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ address, score })
-  })
-  .then(res => res.json())
-  .then(data => console.log('✅ Score saved:', data))
-  .catch(err => console.error('❌ Error saving score:', err));
+  }).then(r=>r.json()).then(d=>console.log('Score saved', d)).catch(e=>console.error(e));
 }
 
-// Funzione per recuperare i record dal database
-async function fetchRecords() {
-  const url = `https://dog-runner-1.onrender.com/api/get-records?address=${userAddress}`;
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-    worldRecord = data.worldRecord;
-    personalRecord = data.personalRecord;
-    updateHUD(); // Aggiorna l'HUD con i nuovi record
-  } catch (err) {
-    console.error('❌ Error fetching records:', err);
-  }
+async function tryStartGame() {
+  const connected = await checkWalletConnection();
+  if (!connected) return;
+  await fetchRecords();
+  resetGame();
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('gameOverScreen').style.display = 'none';
+  update();
 }
-// Funzione per aggiornare l'HUD (score, lives, world record, personal record)
-function updateHUD() {
-  const worldRecordText = `World Record: ${worldRecord}`;
-  const personalRecordText = `Your Record: ${personalRecord}`;
-  const scoreText = `Score: ${Math.floor(score)}`;
-  const livesText = `Lives: ${dog.lives}`;
 
-  ctx.fillStyle = 'black';
-  ctx.font = '20px Arial';
-
-  // Display the world record, personal record, and score in the top right
-  ctx.fillText(worldRecordText, canvas.width - 180, 30); // World Record
-  ctx.fillText(personalRecordText, canvas.width - 180, 60); // Personal Record
-  ctx.fillText(scoreText, canvas.width - 180, 90); // Score
-  ctx.fillText(livesText, 10, 30); // Lives, display at top left
-}
+// Input handlers
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup',   e => keys[e.code] = false);
+document.getElementById('startButton').addEventListener('click', tryStartGame);
+document.getElementById('retryButton').addEventListener('click', tryStartGame);
