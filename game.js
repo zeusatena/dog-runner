@@ -5,6 +5,7 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = 300;
 
+// Preload images for the game
 const dogImg = new Image();
 dogImg.src = 'dog_sprite_flipped.png';
 const bgImg = new Image();
@@ -16,12 +17,14 @@ bikeImg.src = 'bike_sprite_flipped.png';
 const catImg = new Image();
 catImg.src = 'cat_sprite_flipped.png';
 
+// Game state variables
 let dog, bullets, obstacles, keys, score, gameOver;
 let gravity = 1.2;
 let frame = 0;
 let worldRecord = 0;
 let personalRecord = 0;
 
+// Resets the game state for a new run
 function resetGame() {
   dog = {
     x: 100,
@@ -41,23 +44,28 @@ function resetGame() {
   gameOver = false;
 }
 
+// Starts the game: hide UI screens, fetch records, reset and enter main loop
 async function startGame() {
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('gameOverScreen').style.display = 'none';
 
-  // Recupera i record dal backend
+  // Fetch world and personal records
   await fetchRecords();
 
+  // Reset game and kick off the update loop
   resetGame();
   update();
 }
 
+// Listen for key presses and handle movement/shooting
 document.addEventListener('keydown', e => {
   keys[e.code] = true;
+  // Jump on Space if grounded
   if (e.code === 'Space' && dog.grounded && !gameOver) {
     dog.vy = dog.jumpPower;
     dog.grounded = false;
   }
+  // Shoot bullet on Z
   if ((e.key === 'z' || e.key === 'Z') && !gameOver) {
     bullets.push({
       x: dog.x + dog.width,
@@ -73,6 +81,7 @@ document.addEventListener('keyup', e => {
   keys[e.code] = false;
 });
 
+// Spawns random obstacles (car, bike, cat) at the right edge
 function spawnObstacle() {
   const types = [
     { img: carImg, width: 90, height: 60, type: 'car' },
@@ -91,7 +100,7 @@ function spawnObstacle() {
   });
 }
 
-// Integra fetch dei record prima di iniziare il loop
+// Fetches the world and personal record from the backend
 async function fetchRecords() {
   const address = getUserAddress();
   if (!address) return;
@@ -106,18 +115,23 @@ async function fetchRecords() {
   }
 }
 
+// Main game loop: update positions, handle collisions, and redraw
 function update() {
   if (gameOver) return;
 
   frame++;
   score += 0.1;
+
+  // Clear and draw background
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
+  // Horizontal movement
   if (keys['ArrowRight']) dog.x += 5;
   if (keys['ArrowLeft']) dog.x -= 5;
   dog.x = Math.max(0, Math.min(canvas.width - dog.width, dog.x));
 
+  // Vertical movement (gravity)
   dog.vy += gravity;
   dog.y += dog.vy;
   if (dog.y >= canvas.height - dog.height - 20) {
@@ -126,9 +140,11 @@ function update() {
     dog.grounded = true;
   }
 
+  // Draw ground
   ctx.fillStyle = '#228B22';
   ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
 
+  // Draw dog (flip on game over)
   if (gameOver) {
     ctx.save();
     ctx.translate(dog.x + dog.width / 2, dog.y + dog.height / 2);
@@ -139,6 +155,7 @@ function update() {
     ctx.drawImage(dogImg, dog.x, dog.y, dog.width, dog.height);
   }
 
+  // Draw and move bullets
   ctx.fillStyle = 'orange';
   bullets.forEach(b => {
     ctx.fillRect(b.x, b.y, b.width, b.height);
@@ -146,12 +163,14 @@ function update() {
   });
   bullets = bullets.filter(b => b.x < canvas.width);
 
+  // Draw and move obstacles
   obstacles.forEach(ob => {
     ctx.drawImage(ob.image, ob.x, ob.y, ob.width, ob.height);
     ob.x -= ob.speed;
   });
   obstacles = obstacles.filter(ob => ob.x + ob.width > 0);
 
+  // Check collision between dog and obstacles
   obstacles.forEach((ob, i) => {
     if (
       dog.x < ob.x + ob.width &&
@@ -167,13 +186,14 @@ function update() {
         document.getElementById('finalScore').textContent = final;
         document.getElementById('gameOverScreen').style.display = 'flex';
 
-        // Save score to backend with wallet address
+        // Save final score to backend
         const address = getUserAddress();
         if (address) saveScoreToDatabase(address, final);
       }
     }
   });
 
+  // Check collision between bullets and cats
   bullets.forEach((b, j) => {
     obstacles.forEach((ob, i) => {
       if (
@@ -190,20 +210,21 @@ function update() {
     });
   });
 
+  // Draw HUD: records, score, lives
   ctx.fillStyle = 'white';
   ctx.font = '20px Arial';
-  // Mostra i record e score/lives
   ctx.fillText(`World Record: ${worldRecord}`, canvas.width - 180, 60);
   ctx.fillText(`Personal Record: ${personalRecord}`, canvas.width - 180, 90);
   ctx.fillText(`Score: ${Math.floor(score)}`, canvas.width - 180, 30);
   ctx.fillText(`Lives: ${dog.lives}`, 10, 30);
 
+  // Spawn new obstacles periodically
   if (frame % 100 === 0) spawnObstacle();
 
   requestAnimationFrame(update);
 }
 
-// Funzione per salvare il punteggio nel database
+// Sends final score to backend service
 function saveScoreToDatabase(address, score) {
   fetch('https://dog-runner-1.onrender.com/api/save-score', {
     method: 'POST',
@@ -215,7 +236,7 @@ function saveScoreToDatabase(address, score) {
     .catch(err => console.error('❌ Error saving score:', err));
 }
 
-// Inizio gioco: connessione wallet, fetch, reset, hide screens, run loop
+// Initializes the game: wallet connection, fetch records, start
 async function tryStartGame() {
   const connected = await checkWalletConnection();
   if (!connected) return;
@@ -224,5 +245,6 @@ async function tryStartGame() {
   startGame();
 }
 
+// Attach event listeners to start/retry buttons
 document.getElementById('startButton').addEventListener('click', tryStartGame);
 document.getElementById('retryButton').addEventListener('click', tryStartGame);

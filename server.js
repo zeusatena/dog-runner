@@ -6,10 +6,10 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// La tua stringa di connessione a MongoDB Atlas
+// Your MongoDB Atlas connection string
 const MONGO_URI = 'mongodb+srv://dogrunner:dogrunner123@dogrunner.mrn3ipf.mongodb.net/dogrunner?retryWrites=true&w=majority&appName=dogrunner';
 
-// Connetti a MongoDB Atlas
+// Connect to MongoDB Atlas
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
@@ -21,7 +21,7 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 app.use(cors());
 app.use(bodyParser.json());
 
-// Modello per i punteggi
+// Schema and model for scores
 const scoreSchema = new mongoose.Schema({
   address: { type: String, required: true, unique: true },
   score: { type: Number, required: true }
@@ -29,7 +29,7 @@ const scoreSchema = new mongoose.Schema({
 
 const Score = mongoose.model('Score', scoreSchema);
 
-// Endpoint per salvare il punteggio
+// Endpoint to save a score
 app.post('/api/save-score', async (req, res) => {
   const { address, score } = req.body;
   if (!address || typeof score !== 'number') {
@@ -55,12 +55,12 @@ app.post('/api/save-score', async (req, res) => {
   }
 });
 
-// Endpoint per ottenere il record globale (world record) e il record personale
+// Endpoint to get world record and personal record
 app.get('/api/get-records', async (req, res) => {
   try {
     const worldRecordDoc = await Score.findOne().sort({ score: -1 });
     const worldRecord = worldRecordDoc ? worldRecordDoc.score : 0;
-    console.log("world reord",+worldRecord);
+    console.log('world record:', worldRecord);
 
     const { address } = req.query;
     const personalRecordDoc = await Score.findOne({ address });
@@ -73,7 +73,7 @@ app.get('/api/get-records', async (req, res) => {
   }
 });
 
-// Avvio del server
+// Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Backend running at http://localhost:${PORT}`);
 });
