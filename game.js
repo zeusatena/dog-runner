@@ -43,12 +43,13 @@ async function startGame() {
   // Mostra la schermata iniziale e prepara tutto per il gioco
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('gameOverScreen').style.display = 'none';
-  
+
   // Recupera i record dal backend
   await fetchRecords();
   
   // Resetta il gioco e inizia
   resetGame();
+
   update();
 }
 

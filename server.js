@@ -60,6 +60,7 @@ app.get('/api/get-records', async (req, res) => {
   try {
     const worldRecordDoc = await Score.findOne().sort({ score: -1 });
     const worldRecord = worldRecordDoc ? worldRecordDoc.score : 0;
+    console.log("world reord",+worldRecord);
 
     const { address } = req.query;
     const personalRecordDoc = await Score.findOne({ address });
